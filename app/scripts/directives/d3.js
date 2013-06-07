@@ -43,36 +43,44 @@ angular.module('premiseApp')
             .linkDistance(30)
             .size([w, h])
             , graph = scope.graph
-            , called = 0
+            , link
+            , node
             ;
           
-          scope.$watch(scope.nodes, render);
-          scope.$watch(scope.links, render);
+          // This is straight up d3, make the initial graph
+          
+          force
+            .nodes(graph.nodes)
+            .links(graph.links)
+            .start();
             
-          function render () {
-            // todo: currently a design issue, this is called two times on startup, using this to track that, and to see how it might be fixed
-            
-            console.log(++called);
-            
-            // This is straight up d3
-            
-            force
-              .nodes(graph.nodes)
-              .links(graph.links)
-              .start();
+          
+          // Watch the node and links for changes and call the appropriate render methods
+          
+          scope.$watch(scope.nodes, renderNodes);
+          scope.$watch(scope.links, renderLinks);
+          
+          // Setup the animations to go with the dragging
+          
+          force.on("tick", function() {
+            link.attr("x1", function(d) { return d.source.x; })
+              .attr("y1", function(d) { return d.source.y; })
+              .attr("x2", function(d) { return d.target.x; })
+              .attr("y2", function(d) { return d.target.y; });
 
+            node.attr("cx", function(d) { return d.x; })
+              .attr("cy", function(d) { return d.y; });
+          });
+          
+          function renderNodes() {
+            
             // NB: This is required as we're called multiple times so we clear out the old stuff, ideally, we should clear changes, but we're not there yet
             
-            svg.selectAll('*').remove();
+            svg.selectAll('.node').remove();
             
-            var link = svg.selectAll(".link")
-              .data(graph.links)
-              .enter()
-              .append("line")
-              .attr("class", "link")
-              .style("stroke-width", function(d) { return Math.sqrt(d.value); });
-
-            var node = svg.selectAll(".node")
+            // D3 node drawing code
+            
+            node = svg.selectAll(".node")
               .data(graph.nodes)
               .enter()
               .append("circle")
@@ -81,19 +89,27 @@ angular.module('premiseApp')
               .style("fill", function(d) { return color(d.group); })
               .call(force.drag);
 
+            // @todo Find out if this can be changed so it's only done once
+              
             node.append("title")
               .text(function(d) { return d.name; });
-
-            force.on("tick", function() {
-              link.attr("x1", function(d) { return d.source.x; })
-                .attr("y1", function(d) { return d.source.y; })
-                .attr("x2", function(d) { return d.target.x; })
-                .attr("y2", function(d) { return d.target.y; });
-
-              node.attr("cx", function(d) { return d.x; })
-                .attr("cy", function(d) { return d.y; });
-            });
-          };
+          }
+          
+          function renderLinks() {
+            
+            // NB: This is required as we're called multiple times so we clear out the old stuff, ideally, we should clear changes, but we're not there yet
+            
+            svg.selectAll('.link').remove();
+            
+            // D3 link drawing code
+            
+            link = svg.selectAll(".link")
+              .data(graph.links)
+              .enter()
+              .append("line")
+              .attr("class", "link")
+              .style("stroke-width", function(d) { return Math.sqrt(d.value); });
+          }
         };
       }
     };
