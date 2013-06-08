@@ -20,11 +20,17 @@ angular.module('premiseApp')
       
       terminal: true,  // process me last
       
+      scope: { graph: '=' },
+      
       // The compile function does 'static' DOM manipulations
       
       compile: function compile(element, attrs) {
         var w = attrs.$attr.width || width
           , h = attrs.$attr.height || height
+          , force = d3.layout.force()
+            .charge(-120)
+            .linkDistance(30)
+            .size([w, h])
           
           // Every instance of d3Force will add an svg element to the DOM, statically based on the width and height
           // Consequently, we can't do dynamic resizing of the graph based on data values, but it's faster
@@ -38,11 +44,7 @@ angular.module('premiseApp')
           
           // create the force graph
           
-          var force = d3.layout.force()
-            .charge(-120)
-            .linkDistance(30)
-            .size([w, h])
-            , graph = scope.graph
+          var graph = scope.graph
             , link
             , node
             ;
@@ -57,8 +59,8 @@ angular.module('premiseApp')
           
           // Watch the node and links for changes and call the appropriate render methods
           
-          scope.$watch(scope.nodes, renderNodes);
-          scope.$watch(scope.links, renderLinks);
+          scope.$watch(scope.graph.nodes, renderNodes);
+          scope.$watch(scope.graph.links, renderLinks);
           
           // Setup the animations to go with the dragging
           
