@@ -2,15 +2,47 @@
 
 angular.module('premiseApp')
 
+  // This turns every svg tag into a directive, which has a controller,
+  //   so we can expose the svg element via the d3 API and declaratively manipulate it with nested directives.
+
+  .directive('d3Svg', function() {
+    var width = 960
+      , height = 500
+    ;
+    
+    return {
+      restrict: 'A',
+      controller: ['$element', '$attrs', function(element, attrs) {
+        this.height = attrs.$attr.height;
+        this.width  = attrs.$attr.width;
+        
+        this.svg = d3.select(element[0]);
+        this.svgJQLite = element;
+      }],
+      compile: function compile(element, attrs) {
+        var elem = element[0];
+
+        if(!attrs.$attr.width) {
+          element.attr('width', width);
+        }
+        
+        if(!attrs.$attr.height) {
+          element.attr('height', height);
+        }
+        
+        return function postLink() {
+        }
+      }
+    };
+  })
+
   // Create a new element which creates a d3 force graph, will be referred to as d3-force in the html
 
   .directive('d3Force', function () {
     
     // defaults for all instances of the graph
     
-    var width = 960
-      , height = 500
-      , color = d3.scale.category20();
+    var color = d3.scale.category20();
       ;
 
     // We return an object description of the directive, the angular compiler uses this to expand it's "vocabulary"
@@ -18,44 +50,46 @@ angular.module('premiseApp')
     return {
       restrict: 'E',  // this directive can only be used as an attribute
       
-      terminal: true,  // process me last
+      scope: {
+        graph: '=',
+        linkDistance: '=',
+        charge: '='
+      },
       
-      scope: { graph: '=' },
+      require: '^d3Svg',
       
       // The compile function does 'static' DOM manipulations
+      // Attributes:
+      //        color: d3.scale.<color>() provide a color category
       
       compile: function compile(element, attrs) {
-        var w = attrs.$attr.width || width
-          , h = attrs.$attr.height || height
+        var c = d3.scale[attrs.$attr.color] && d3.scale[attrs.$attr.color]() || color
           , force = d3.layout.force()
-            .charge(-120)
-            .linkDistance(30)
-            .size([w, h])
-          
-          // Every instance of d3Force will add an svg element to the DOM, statically based on the width and height
-          // Consequently, we can't do dynamic resizing of the graph based on data values, but it's faster
-          
-          , svg = d3.select(element[0]).append('svg').attr('width', w).attr('height', h)
-          ;
-          
+        ;
+        
         // This does the actual work when the data on the scope is available
         
-        return function postLink(scope, element, attrs) {
+        return function postLink(scope, element, attrs, d3SvgController) {
           
           // create the force graph
           
           var graph = scope.graph
             , link
             , node
-            ;
-          
+            , linkDistance = scope.linkDistance || 30
+            , charge = scope.charge || -120
+            , svg = d3SvgController.svg
+          ;
+
           // This is straight up d3, make the initial graph
           
           force
+            .size([svg.attr('width'), svg.attr('height')])
+            .charge(charge)
+            .linkDistance(linkDistance)
             .nodes(graph.nodes)
             .links(graph.links)
             .start();
-            
           
           // Watch the node and links for changes and call the appropriate render methods
           
@@ -115,4 +149,5 @@ angular.module('premiseApp')
         };
       }
     };
-  });
+  })
+  ;
